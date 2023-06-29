@@ -24,7 +24,19 @@ const initializeDBAndServer = async () => {
 };
 initializeDBAndServer();
 
-//GET all Movies API
+//GET all information
+app.get("/", async (request, response) => {
+  const getAllInfoQuery = `
+        SELECT
+          *
+        FROM
+          movie;
+    `;
+  const infoArray = await db.all(getAllInfoQuery);
+  response.send(infoArray);
+});
+
+//GET all Movie Names API
 app.get("/movies/", async (request, response) => {
   const getAllMoviesQuery = `
         SELECT
@@ -39,11 +51,83 @@ app.get("/movies/", async (request, response) => {
 //POST a new movie
 app.post("/movies/", async (request, response) => {
   const movieDetails = request.body;
-  const { movieId, directorId, movieName, leadActor } = movieDetails;
+  const { directorId, movieName, leadActor } = movieDetails;
   const addNewMovieQuery = `
-        INSERT INTO movie (movie_id,director_id,movie_name,lead_actor)
-        VALUES (${movieId},${directorId},'${movieName}','${leadActor}');`;
-  const dbResponse = await db.run(addNewMovieQuery);
-  const bookId = dbResponse.lastId;
-  response.send({ movieId: movieId });
+        INSERT INTO movie (director_id,movie_name,lead_actor)
+        VALUES (${directorId},'${movieName}','${leadActor}');`;
+  await db.run(addNewMovieQuery);
+  response.send("Movie Successfully Added");
 });
+
+//GET a particular movie
+app.get("/movies/:movieId/", async (request, response) => {
+  const { movieId } = request.params;
+  const getParticularMovieQuery = `
+        SELECT 
+          movie_id as movieId,
+          director_id as directorId,
+          movie_name as movieName,
+          lead_actor as leadActor
+        FROM
+          movie
+        WHERE
+          movie_id = ${movieId};`;
+  const movie = await db.get(getParticularMovieQuery);
+  return response.send(movie);
+});
+
+//Update a particular movie based on movie_id
+app.put("/movies/:movieId/", async (request, response) => {
+  const { movieId } = request.params;
+  const movieDetails = request.body;
+  const { directorId, movieName, leadActor } = movieDetails;
+  const updateMovieQuery = `
+        UPDATE 
+          movie
+        SET
+          director_id = ${directorId},
+          movie_name = '${movieName}',
+          lead_actor = '${leadActor}'
+        WHERE
+          movie_id = ${movieId};`;
+  await db.run(updateMovieQuery);
+  response.send("Movie Details Updated");
+});
+
+//Delete a particular movie based on movie_id
+app.delete("/movies/:movieId/", async (request, response) => {
+  const { movieId } = request.params;
+  const deleteMovieQuery = `
+        DELETE FROM movie WHERE movie_id = ${movieId}`;
+  await db.run(deleteMovieQuery);
+  response.send("Movie Removed");
+});
+
+//GET all the director Details
+app.get("/directors/", async (request, response) => {
+  const getDirectorDetailsQuery = `
+        SELECT
+          director_id as directorId,
+          director_name as directorName
+        FROM
+          director
+    `;
+  const directorsArray = await db.all(getDirectorDetailsQuery);
+  response.send(directorsArray);
+});
+
+//GET all movies directed by the director with director_id
+app.get("/directors/:directorId/movies/", async (request, response) => {
+  const { directorId } = request.params;
+  const getMoviesDirectedByADirectorQuery = `
+        SELECT
+          movie_name as movieName
+        FROM
+          movie
+        WHERE
+          director_id = ${directorId};`;
+  const moviesArray = await db.all(getMoviesDirectedByADirectorQuery);
+  response.send(moviesArray);
+});
+
+module.exports = app;
